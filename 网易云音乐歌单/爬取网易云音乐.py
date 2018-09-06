@@ -1,10 +1,9 @@
 # -*- coding:utf-8 -*-
-# from selenium import webdriver
 import csv
 from selenium import webdriver
 import time
 import sys
-from selenium.webdriver.support.ui import WebDriverWait # available since 2.4.0
+# from selenium.webdriver.support.ui import WebDriverWait # available since 2.4.0
 
 t = time.localtime()
 csv_file = open("playlist{}.csv".format(time.asctime(t).replace(":", "_")), "w", newline='')
@@ -13,43 +12,7 @@ writer.writerow(['song_title', 'song_time', 'song_url'])
 song_sheet = []  # 存储歌单的链接
 
 
-def main(url):
-    chrome_options = Options()
-    chrome_options.add_argument('''Mozilla/5.0 (Windows NT 10.0; Win64; x64) 
-	AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36''')
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    # 禁用图片加载
-    prefs = {
-		'profile.default_content_setting_values': {
-			'images' : 2
-		}
-	}
-    chrome_options.add_experimental_option('prefs',prefs)
-    driver = webdriver.Chrome(executable_path='/opt/chromedriver',chrome_options=chrome_options)
-
-    while url != 'javascript:void(0)':
-
-		driver.get(url)
-		# 切換到上一層的frame
-		driver.switch_to.frame("contentFrame")
-		data = driver.find_elements_by_class_name("u-cover") #要注意这里的find_elements_by_class_name 得到的是有个list对象
-		for i in data:
-			driver.implicitly_wait(5)
-			# 获取到每一个歌单的链接
-			msk = i.find_element_by_class_name('msk').\
-				get_attribute("href")
-			song_sheet.append(msk)
-		url = 'javascript:void(0)'
-	allsonglist(song_sheet,driver)
-	print('全量爬完')
-	driver.quit()
-	csv_file.close()
-
-# 获取每个歌单的歌曲列表
-
-
-def allsonglist(song_sheet_urls,driver):
+def allsonglist(song_sheet_urls, driver):
 	jindu = 0
 	for song_sheet_url in song_sheet_urls:
 		# 循环访问每一个歌单
@@ -63,7 +26,8 @@ def allsonglist(song_sheet_urls,driver):
 			# 去掉字符串中的&nbsp;
 			song_name = "".join(song_name.split())
 			# 获取歌曲时长
-			song_time = song.find_element_by_class_name('u-dur').text.split()
+			song_time = song.find_element_by_class_name('u-dur').\
+				text.split()
 			# 获取歌曲链接
 			song_url = song.find_element_by_css_selector('.txt a').\
 				get_attribute('href')
@@ -71,25 +35,64 @@ def allsonglist(song_sheet_urls,driver):
 			try:
 				writer.writerow([song_name, song_time, song_url])
 			except Exception as e:
-				print('err')
+				print(e)
 			else:
 				pass
 			finally:
 				pass
 		# 进度条的长度
 		jindu += 1
-		s1 = "\r[%s%s]%d%%"%("*"*jindu," "*(100-jindu),jindu)
-		sys.stdout.write(">")
+		progress_bar = "\r[%s%s]%d%%"%("*"*jindu, " "*(100-jindu), jindu)
+		sys.stdout.write(progress_bar)
 		# 进度条的内容，这里要注意了，pycharm有可能不显示write的方法
 		sys.stdout.flush()
 		# 刷新缓存
 		time.sleep(0.5)
 
 
+def main(url):
+	chrome_options = webdriver.ChromeOptions()
+	chrome_options.add_argument('''Mozilla/5.0 (Windows NT 10.0; Win64; x64) 
+	AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36''')
+	chrome_options.add_argument('--headless')
+	chrome_options.add_argument('--disable-gpu')
+	# 禁用图片加载
+	prefs = {
+		'profile.default_content_setting_values': {
+			'images': 2
+		}
+	}
+	chrome_options.add_experimental_option('prefs', prefs)
+	driver = webdriver.Chrome(executable_path='/opt/chromedriver',chrome_options=chrome_options)
+
+	while url != 'javascript:void(0)':
+
+		driver.get(url)
+		# 切換到上一層的frame
+		driver.switch_to.frame("contentFrame")
+		# 要注意这里的find_elements_by_class_name 得到的是有个list对象
+		data = driver.find_elements_by_class_name("u-cover")
+		for i in data:
+			driver.implicitly_wait(5)
+			# 获取到每一个歌单的链接
+			msk = i.find_element_by_class_name('msk').\
+			get_attribute("href")
+			song_sheet.append(msk)
+
+		url = 'javascript:void(0)'
+
+	allsonglist(song_sheet, driver)
+	print('全量爬完')
+	driver.quit()
+	csv_file.close()
+
+
+# 获取每个歌单的歌曲列表
+
+
 if __name__ == '__main__':
 	url = 'https://music.163.com/#/discover/playlist/?order=hot&cat=%E5%85%A8%E9%83%A8&limit=35&offset=0'
 	main(url)
-
 
 
 """
